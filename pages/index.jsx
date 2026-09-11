@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, Minus, X, Package, AlertTriangle, Loader2, ChevronDown, Pencil, Check, Mail } from "lucide-react";
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../supabase/supabaseClient";
+
 
 const STORES = ["VAN", "ガモウ", "ダリア", "YAY", "ハーツ"];
 
