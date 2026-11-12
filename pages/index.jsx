@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, Minus, X, Package, AlertTriangle, Loader2, ChevronDown, Pencil, Check, Mail } from "lucide-react";
-import { supabase } from "../supabase/supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 
-
-const STORES = ["VAN", "ガモウ", "ダリア", "YAY", "ハーツ"];
+const STORES = ["VAN", "ガモウ", "ダリア", "YAY", "ハーツ", "グローバルミルボン", "TOKIO"];
+// このタブ内の品目はメーカー名に関係なく、すべてそのタブ自身の発注先として扱う
+const STORE_OWNED_SUPPLIERS = ["グローバルミルボン", "TOKIO"];
 
 const CATEGORIES = [
   { key: "color", label: "カラー材", accent: "#9D3B4A", light: "#F7E9EB" },
@@ -18,19 +19,41 @@ const CATEGORIES = [
   { key: "haircare", label: "ヘアケア", accent: "#B5678F", light: "#F7EAF0" },
   { key: "digitalperm", label: "デジタルパーマ", accent: "#6B5CA5", light: "#EFEDF8" },
   { key: "processing", label: "処理剤", accent: "#3F7A6E", light: "#E7F2EF" },
+  { key: "treatment_pro", label: "業務用トリートメント", accent: "#8E6B2F", light: "#F4ECDB", onlyFor: ["TOKIO"] },
+  { key: "tokio_pro_shampoo", label: "業務用シャンプー", accent: "#3B6B8C", light: "#E9F0F5", onlyFor: ["TOKIO"] },
+  { key: "tokio_pro_conditioner", label: "業務用コンディショナー", accent: "#5B7FA3", light: "#ECF1F7", onlyFor: ["TOKIO"] },
+  { key: "tokio_retail_shampoo", label: "店販用シャンプー", accent: "#C97AA0", light: "#F9EEF3", onlyFor: ["TOKIO"] },
+  { key: "tokio_retail_conditioner", label: "店販用コンディショナー", accent: "#D68CAE", light: "#FBF0F5", onlyFor: ["TOKIO"] },
+  { key: "treatment_retail", label: "店販用トリートメント", accent: "#C2703D", light: "#F9ECE0", onlyFor: ["TOKIO"] },
 ];
 
-const SUPPLIERS = ["VAN", "ガモウ", "ダリア", "YAY", "ハーツ"];
+// 店販として扱うカテゴリ（新しく追加した品目・発注記録は「店販」になる）
+const RETAIL_CATEGORY_KEYS = ["treatment_retail", "tokio_retail_shampoo", "tokio_retail_conditioner"];
+
+// TOKIOの初期品目（空のカテゴリにだけ、一度だけ登録される）
+const TOKIO_SEED = [
+  { key: "treatment_pro", names: ["0番", "1番", "2番", "3番", "4番"] },
+  { key: "tokio_pro_shampoo", names: ["プレミアム400", "プレミアム700", "プラチナム400", "プラチナム700"] },
+  { key: "tokio_pro_conditioner", names: ["プレミアム400", "プレミアム700", "プラチナム400", "プラチナム700"] },
+  { key: "tokio_retail_shampoo", names: ["プレミアム400", "プレミアム700", "プラチナム400", "プラチナム700"] },
+  { key: "tokio_retail_conditioner", names: ["プレミアム400", "プレミアム700", "プラチナム400", "プラチナム700"] },
+  { key: "treatment_retail", names: ["プレミアムエアトリートメント", "ホームケア"] },
+];
+
+const SUPPLIERS = ["VAN", "ガモウ", "ダリア", "YAY", "ハーツ", "グローバルミルボン", "TOKIO"];
 
 const SUPPLIER_CATEGORY_KEYS = {
   YAY: ["shampoo", "conditioner", "haircare"],
   ハーツ: ["straight", "digitalperm", "processing"],
+  グローバルミルボン: ["shampoo", "conditioner"],
+  TOKIO: ["treatment_pro", "tokio_pro_shampoo", "tokio_pro_conditioner", "tokio_retail_shampoo", "tokio_retail_conditioner", "treatment_retail"],
 };
 
 function categoriesForSupplier(sup) {
   const allowed = SUPPLIER_CATEGORY_KEYS[sup];
-  if (!allowed) return CATEGORIES;
-  return CATEGORIES.filter((c) => allowed.includes(c.key));
+  if (allowed) return allowed.map((k) => CATEGORIES.find((c) => c.key === k)).filter(Boolean);
+  // 制限のない発注先には、特定の発注先専用のカテゴリ（onlyFor）は出さない
+  return CATEGORIES.filter((c) => !c.onlyFor || c.onlyFor.includes(sup));
 }
 
 const SUPPLIER_MAP = {
@@ -51,6 +74,8 @@ const SUPPLIER_MAP = {
   YAY: "YAY",
   ナインヤーズ: "YAY",
   ハーツ: "ハーツ",
+  グローバルミルボン: "グローバルミルボン",
+  TOKIO: "TOKIO",
 };
 
 function supplierForMaker(maker) {
@@ -689,6 +714,11 @@ function levelColor(stock, par) {
   return "#4C7A4F";
 }
 
+// 追加した発注先タブも、読み込み失敗時の初期データに空の状態で含める
+for (const s of STORES) {
+  if (!DEFAULT_DATA[s]) DEFAULT_DATA[s] = emptyStore();
+}
+
 export default function InventoryTracker() {
   const [data, setData] = useState(null);
   const [store, setStore] = useState("VAN");
@@ -697,6 +727,11 @@ export default function InventoryTracker() {
   const [loadError, setLoadError] = useState("");
   const [exportMsg, setExportMsg] = useState("");
   const fileInputRef = useRef(null);
+  // 保存の安全装置：最後に読み込んだ/保存したDB側の版、保存の順番待ち、読み込み失敗フラグ
+  const serverVersionRef = useRef(null);
+  const saveQueueRef = useRef(Promise.resolve());
+  const pendingSavesRef = useRef(0);
+  const loadFailedRef = useRef(false);
   const [diagInfo, setDiagInfo] = useState("");
   const [saving, setSaving] = useState(false);
   const [addingMakerOpen, setAddingMakerOpen] = useState(false);
@@ -738,11 +773,12 @@ export default function InventoryTracker() {
         try {
           const { data: row, error } = await supabase
             .from("oorder_orders")
-            .select("data")
+            .select("data, updated_at")
             .eq("id", "main")
             .maybeSingle();
           if (error) throw error;
           parsed = (row && row.data) || {};
+          serverVersionRef.current = row ? row.updated_at : null;
           lastErr = null;
           break;
         } catch (e) {
@@ -752,8 +788,11 @@ export default function InventoryTracker() {
         }
       }
       if (lastErr) {
+        // 読み込めていない状態で保存すると、本物のデータを初期データで上書きしてしまうため保存を止める
+        loadFailedRef.current = true;
         setLoadError(
-          "保存データの読み込みに失敗しました：" + String((lastErr && lastErr.message) || lastErr)
+          "保存データの読み込みに失敗しました：" + String((lastErr && lastErr.message) || lastErr) +
+            "（データ保護のため、ページを再読み込みするまで保存しません）"
         );
         parsed = {};
       }
@@ -773,6 +812,8 @@ export default function InventoryTracker() {
           merged[s]._colorSchemeFixed = !!(parsed[s] && parsed[s]._colorSchemeFixed);
           merged[s]._importedFromLouie = !!(parsed[s] && parsed[s]._importedFromLouie);
           merged[s]._stockParSyncedOnce = !!(parsed[s] && parsed[s]._stockParSyncedOnce);
+          merged[s]._globalMilbonMoved = !!(parsed[s] && parsed[s]._globalMilbonMoved);
+          merged[s]._tokioSeeded = !!(parsed[s] && parsed[s]._tokioSeeded);
           for (const c of CATEGORIES) {
             const fallback = (DEFAULT_DATA[s] && DEFAULT_DATA[s][c.key]) || emptyCategory();
             const existing = parsed[s] && parsed[s][c.key];
@@ -1885,6 +1926,62 @@ export default function InventoryTracker() {
             }
           }
         }
+        // VANのシャンプー／コンディショナーにあるグローバルミルボンを、新しい「グローバルミルボン」タブへそのまま移す
+        let movedInfo = "";
+        {
+          const isGlobalMilbon = (name) => {
+            const n = String(name || "").replace(/[\s\u3000]/g, "").toLowerCase();
+            return (n.includes("グローバル") && n.includes("ミルボン")) || n.includes("globalmilbon");
+          };
+          const src = merged.VAN;
+          const dst = merged["グローバルミルボン"];
+          if (src && dst && !src._globalMilbonMoved) {
+            const parts = [];
+            for (const [ck, label] of [["shampoo", "シャンプー"], ["conditioner", "コンディショナー"]]) {
+              const sc = src[ck];
+              const dc = dst[ck];
+              if (!sc || !dc) continue;
+              const movedItems = sc.items.filter((i) => isGlobalMilbon(i.maker));
+              const movedMakers = sc.makers.filter((m) => isGlobalMilbon(m.name));
+              if (movedItems.length === 0 && movedMakers.length === 0) continue;
+              sc.items = sc.items.filter((i) => !isGlobalMilbon(i.maker));
+              sc.makers = sc.makers.filter((m) => !isGlobalMilbon(m.name));
+              movedMakers.forEach((m) => {
+                if (!dc.makers.some((x) => x.name === m.name)) dc.makers.push(m);
+              });
+              movedItems.forEach((i) => {
+                if (!dc.makers.some((x) => x.name === i.maker)) dc.makers.push(mk(i.maker, []));
+                if (!dc.items.some((x) => x.id === i.id)) dc.items.push(i);
+              });
+              parts.push(label + movedItems.length + "件");
+            }
+            if (parts.length > 0) {
+              src._globalMilbonMoved = true;
+              migrated = true;
+              movedInfo = " 【グローバルミルボンを移動：" + parts.join("・") + "】";
+            }
+          }
+        }
+        // TOKIOの初期品目を登録（空のカテゴリにだけ・一度だけ）
+        {
+          const tk = merged.TOKIO;
+          if (tk && !tk._tokioSeeded) {
+            let seeded = 0;
+            for (const sd of TOKIO_SEED) {
+              const cat = tk[sd.key];
+              if (!cat || cat.items.length > 0) continue;
+              const usage = RETAIL_CATEGORY_KEYS.includes(sd.key) ? "店販" : "業務";
+              if (!cat.makers.some((m) => m.name === "TOKIO")) cat.makers.push(mk("TOKIO", []));
+              sd.names.forEach((nm, idx) => {
+                cat.items.push(it("tk_" + sd.key + "_" + idx, "TOKIO", "", nm, 0, 0, "本", "", 0, 0, usage));
+                seeded++;
+              });
+            }
+            tk._tokioSeeded = true;
+            migrated = true;
+            if (seeded > 0) movedInfo += " 【TOKIOの品目を" + seeded + "件登録】";
+          }
+        }
         setData(merged);
         setDiagInfo(
           `parsedKeys=${JSON.stringify(Object.keys(parsed))} ` +
@@ -1893,7 +1990,8 @@ export default function InventoryTracker() {
             `VANcolor=${merged.VAN.color.items.length} ` +
             `ダリアcolor=${merged.ダリア.color.items.length} ` +
             `ガモウstraight=${merged.ガモウ.straight.items.length} ` +
-            `YAYshampoo=${merged.YAY.shampoo.items.length}`
+            `YAYshampoo=${merged.YAY.shampoo.items.length}` +
+            movedInfo
         );
         if (migrated) {
           persist(merged);
@@ -1936,36 +2034,120 @@ export default function InventoryTracker() {
     }
   }, [store, category, data, activeMaker]);
 
+  // 保存は1件ずつ順番に行う。DB側が他の端末で更新されていた場合は上書きせず、最新を読み込み直す。
   function persist(next) {
+    if (loadFailedRef.current) {
+      setLoadError(
+        (prev) =>
+          prev ||
+          "読み込みに失敗した状態のため、データ保護のため保存しませんでした。ページを再読み込みしてからやり直してください。"
+      );
+      return Promise.resolve();
+    }
     setData(next);
     setSaving(true);
-    return (async () => {
-      let lastErr = null;
-      const maxAttempts = 4;
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        try {
-          const { error } = await supabase
-            .from("oorder_orders")
-            .upsert({ id: "main", data: next, updated_at: new Date().toISOString() });
-          if (error) throw error;
-          lastErr = null;
-          break;
-        } catch (e) {
-          lastErr = e;
-          const wait = 400 * Math.pow(1.6, attempt);
-          await new Promise((r) => setTimeout(r, wait));
-        }
-      }
-      setSaving(false);
-      if (lastErr) {
-        setLoadError(
-          "保存に失敗しました（何度か再試行しましたがダメでした）：" + String((lastErr && lastErr.message) || lastErr)
-        );
-      } else if (loadError) {
-        setLoadError("");
-      }
-    })();
+    pendingSavesRef.current += 1;
+    const job = saveQueueRef.current.then(() => doSave(next));
+    saveQueueRef.current = job.catch(() => {});
+    return job.finally(() => {
+      pendingSavesRef.current -= 1;
+      if (pendingSavesRef.current === 0) setSaving(false);
+    });
   }
+
+  async function doSave(next) {
+    const newVer = new Date().toISOString();
+    let lastErr = null;
+    const maxAttempts = 4;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const base = serverVersionRef.current;
+        let res;
+        if (base === null) {
+          res = await supabase
+            .from("oorder_orders")
+            .insert({ id: "main", data: next, updated_at: newVer })
+            .select("updated_at");
+        } else {
+          res = await supabase
+            .from("oorder_orders")
+            .update({ data: next, updated_at: newVer })
+            .eq("id", "main")
+            .eq("updated_at", base)
+            .select("updated_at");
+        }
+        if (res.error && res.error.code !== "23505") throw res.error;
+        if (!res.error && res.data && res.data.length > 0) {
+          serverVersionRef.current = res.data[0].updated_at;
+          lastErr = null;
+          if (loadError) setLoadError("");
+          return;
+        }
+        // 0件更新（または既に存在）＝ 版が合わない。通信の取りこぼしで自分の保存が既に届いていたかを確認する
+        const { data: latest, error: e2 } = await supabase
+          .from("oorder_orders")
+          .select("updated_at")
+          .eq("id", "main")
+          .maybeSingle();
+        if (e2) throw e2;
+        if (latest && Date.parse(latest.updated_at) === Date.parse(newVer)) {
+          serverVersionRef.current = latest.updated_at;
+          lastErr = null;
+          if (loadError) setLoadError("");
+          return;
+        }
+        // 他の端末が先に更新していた → 上書きせずに最新を読み込み直す
+        loadFailedRef.current = true;
+        setLoadError(
+          "他の端末で先に更新されていたため、上書きを防ぐ目的で保存を止めました。最新の状態を読み込み直します（直前の操作はもう一度行ってください）。"
+        );
+        setTimeout(() => {
+          try {
+            window.location.reload();
+          } catch (e3) {}
+        }, 2500);
+        return;
+      } catch (e) {
+        lastErr = e;
+        const wait = 400 * Math.pow(1.6, attempt);
+        await new Promise((r) => setTimeout(r, wait));
+      }
+    }
+    if (lastErr) {
+      setLoadError(
+        "保存に失敗しました（何度か再試行しましたがダメでした）：" + String((lastErr && lastErr.message) || lastErr)
+      );
+    }
+  }
+
+  // 画面に戻ってきた時、他の端末で更新されていたら最新を読み込み直す（古い画面のまま操作して上書きするのを防ぐ）
+  useEffect(() => {
+    async function checkFresh() {
+      if (document.visibilityState && document.visibilityState !== "visible") return;
+      if (loadFailedRef.current || pendingSavesRef.current > 0) return;
+      if (serverVersionRef.current === null) return;
+      try {
+        const { data: row, error } = await supabase
+          .from("oorder_orders")
+          .select("updated_at")
+          .eq("id", "main")
+          .maybeSingle();
+        if (error || !row) return;
+        if (pendingSavesRef.current > 0) return;
+        if (Date.parse(row.updated_at) !== Date.parse(serverVersionRef.current)) {
+          window.location.reload();
+        }
+      } catch (e) {}
+    }
+    document.addEventListener("visibilitychange", checkFresh);
+    window.addEventListener("pageshow", checkFresh);
+    window.addEventListener("focus", checkFresh);
+    return () => {
+      document.removeEventListener("visibilitychange", checkFresh);
+      window.removeEventListener("pageshow", checkFresh);
+      window.removeEventListener("focus", checkFresh);
+    };
+  }, []);
 
   function exportToFile() {
     const json = JSON.stringify(data, null, 2);
@@ -2116,6 +2298,7 @@ export default function InventoryTracker() {
       color: newItem.color || "#CCCCCC",
       price: Number(newItem.price) || 0,
       used: 0,
+      ...(RETAIL_CATEGORY_KEYS.includes(category) ? { usage: "店販" } : {}),
     });
     persist(next);
     setNewItem({ name: "", stock: "", par: "", unit: "本", color: "#CCCCCC", price: "" });
@@ -2509,7 +2692,7 @@ export default function InventoryTracker() {
           (i.usedGyomu || 0) > 0 ||
           (i.usedTenhan || 0) > 0 ||
           (i.surplusOrdered || 0) > 0;
-        if (hasUsage && supplierForMaker(i.maker) === supplier) {
+        if (hasUsage && (STORE_OWNED_SUPPLIERS.includes(supplier) || supplierForMaker(i.maker) === supplier)) {
           results.push({ ...i, categoryKey: c.key, categoryLabel: c.label });
         }
       });
@@ -2535,6 +2718,7 @@ export default function InventoryTracker() {
         price: i.price || 0,
         subtotal: qty * (i.price || 0),
         categoryLabel: i.categoryLabel,
+        ...(RETAIL_CATEGORY_KEYS.includes(i.categoryKey) ? { usage: "店販" } : {}),
       };
     });
     const total = recordItems.reduce((sum, i) => sum + i.subtotal, 0);
@@ -2774,7 +2958,7 @@ export default function InventoryTracker() {
         {exportMsg && (
           <div className="text-[11px] font-mono text-[#C9C9C9] mb-3">{exportMsg}</div>
         )}
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {STORES.map((s) => (
             <button
               key={s}
