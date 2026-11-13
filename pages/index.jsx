@@ -40,6 +40,214 @@ const TOKIO_SEED = [
   { key: "treatment_retail", names: ["プレミアムエアトリートメント", "ホームケア"] },
 ];
 
+// グローバルミルボンの初期品目（LOUIEと同じ内容。空のカテゴリにだけ、一度だけ登録される。在庫は0から）
+const GLOBAL_MILBON_SEED = {
+  "shampoo": [
+    {
+      "id": "i1790846018352",
+      "name": "スムース　スムージングシャンプー　200ml",
+      "par": 3,
+      "price": 1100,
+      "color": "#0061fe",
+      "unit": "本"
+    },
+    {
+      "id": "i1790846513090",
+      "name": "スムース　スムージングシャンプー 500ml",
+      "par": 3,
+      "price": 2100,
+      "color": "#0061fe",
+      "unit": "本"
+    },
+    {
+      "id": "i1790846141853",
+      "name": "スムース　スムージングシャンプー　2.5L",
+      "par": 1,
+      "price": 4830,
+      "color": "#0056d6",
+      "unit": "本"
+    },
+    {
+      "id": "i1790846231738",
+      "name": "リペアヒート　ヒートプロテクティブシャンプー　200ml",
+      "par": 3,
+      "price": 1200,
+      "color": "#b51a00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790846276503",
+      "name": "リペアヒート　ヒートプロテクティブシャンプー　500ml",
+      "par": 3,
+      "price": 2250,
+      "color": "#b51a00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790846322279",
+      "name": "リペアヒート　ヒートプロテクティブシャンプー　2.5L",
+      "par": 1,
+      "price": 5230,
+      "color": "#b51a00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790846677714",
+      "name": "リアウェイクン　リニューイングシャンプー　200ml",
+      "par": 3,
+      "price": 1200,
+      "color": "#c4bc00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790848242874",
+      "name": "リアウェイクン　リニューイングシャンプー　500ml",
+      "par": 3,
+      "price": 2250,
+      "color": "#c4bc00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790848282581",
+      "name": "リアウェイクン　リニューイングシャンプー　2.5L",
+      "par": 1,
+      "price": 5230,
+      "color": "#c4bc00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790848346068",
+      "name": "リアウェイクン　リニューイングオイルシャンプー",
+      "par": 2,
+      "price": 1750,
+      "color": "#c4bc00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790848403479",
+      "name": "カラープリザーブ　カラーリテイニングシャンプー　200ml",
+      "par": 3,
+      "price": 1300,
+      "color": "#ee719e",
+      "unit": "本"
+    },
+    {
+      "id": "i1790848440308",
+      "name": "カラープリザーブ　カラーリテイニングシャンプー　500ml",
+      "par": 3,
+      "price": 2400,
+      "color": "#ee719e",
+      "unit": "本"
+    },
+    {
+      "id": "i1790848467151",
+      "name": "カラープリザーブ　カラーリテイニングシャンプー　2.5L",
+      "par": 1,
+      "price": 5660,
+      "color": "#ee719e",
+      "unit": "本"
+    }
+  ],
+  "conditioner": [
+    {
+      "id": "i1790851193080",
+      "name": "スムース　スムージングトリートメント 200ml",
+      "par": 3,
+      "price": 1500,
+      "color": "#0061fe",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851219683",
+      "name": "スムース　スムージングトリートメント 500ml",
+      "par": 3,
+      "price": 2900,
+      "color": "#0061fe",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851243812",
+      "name": "スムース　スムージングトリートメント 2.5L",
+      "par": 1,
+      "price": 6700,
+      "color": "#0061fe",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851349904",
+      "name": "リペアヒート　ヒートプロテクティブトリートメント　200ml",
+      "par": 3,
+      "price": 1600,
+      "color": "#b51a00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851371056",
+      "name": "リペアヒート　ヒートプロテクティブトリートメント　500ml",
+      "par": 3,
+      "price": 3050,
+      "color": "#b51a00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851401016",
+      "name": "リペアヒート　ヒートプロテクティブトリートメント　2.5L",
+      "par": 1,
+      "price": 7100,
+      "color": "#b51a00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851495405",
+      "name": "リアウェイクン　リニューイングトリートメント　200ml",
+      "par": 3,
+      "price": 1600,
+      "color": "#c4bc00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851515696",
+      "name": "リアウェイクン　リニューイングトリートメント　500ml",
+      "par": 3,
+      "price": 3050,
+      "color": "#c4bc00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851534473",
+      "name": "リアウェイクン　リニューイングトリートメント　2.5L",
+      "par": 1,
+      "price": 7100,
+      "color": "#c4bc00",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851659992",
+      "name": "カラープリザーブ　カラーリテイニングトリートメント　200ml",
+      "par": 3,
+      "price": 1700,
+      "color": "#ee719e",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851672455",
+      "name": "カラープリザーブ　カラーリテイニングトリートメント　500ml",
+      "par": 3,
+      "price": 3200,
+      "color": "#ee719e",
+      "unit": "本"
+    },
+    {
+      "id": "i1790851689814",
+      "name": "カラープリザーブ　カラーリテイニングトリートメント　2.5L",
+      "par": 1,
+      "price": 7520,
+      "color": "#ee719e",
+      "unit": "本"
+    }
+  ]
+};
+
 const SUPPLIERS = ["VAN", "ガモウ", "ダリア", "YAY", "ハーツ", "グローバルミルボン", "TOKIO"];
 
 const SUPPLIER_CATEGORY_KEYS = {
@@ -814,6 +1022,7 @@ export default function InventoryTracker() {
           merged[s]._stockParSyncedOnce = !!(parsed[s] && parsed[s]._stockParSyncedOnce);
           merged[s]._globalMilbonMoved = !!(parsed[s] && parsed[s]._globalMilbonMoved);
           merged[s]._tokioSeeded = !!(parsed[s] && parsed[s]._tokioSeeded);
+          merged[s]._gmSeeded = !!(parsed[s] && parsed[s]._gmSeeded);
           for (const c of CATEGORIES) {
             const fallback = (DEFAULT_DATA[s] && DEFAULT_DATA[s][c.key]) || emptyCategory();
             const existing = parsed[s] && parsed[s][c.key];
@@ -1960,6 +2169,42 @@ export default function InventoryTracker() {
               migrated = true;
               movedInfo = " 【グローバルミルボンを移動：" + parts.join("・") + "】";
             }
+          }
+        }
+        // グローバルミルボンの初期品目を登録（空のカテゴリにだけ・一度だけ）
+        {
+          const gmStore = merged["グローバルミルボン"];
+          if (gmStore && !gmStore._gmSeeded) {
+            let seededGm = 0;
+            for (const ck of ["shampoo", "conditioner"]) {
+              const cat = gmStore[ck];
+              if (!cat || cat.items.length > 0) continue;
+              const list = GLOBAL_MILBON_SEED[ck] || [];
+              if (list.length === 0) continue;
+              if (!cat.makers.some((m) => m.name === "GLOBAL MILBON")) cat.makers.push(mk("GLOBAL MILBON", []));
+              list.forEach((sd) => {
+                cat.items.push({
+                  id: sd.id,
+                  maker: "GLOBAL MILBON",
+                  type: "",
+                  name: sd.name,
+                  stock: 0,
+                  par: sd.par,
+                  unit: sd.unit || "本",
+                  color: sd.color || "",
+                  price: sd.price || 0,
+                  used: 0,
+                  usage: "業務",
+                  usedGyomu: 0,
+                  usedTenhan: 0,
+                  colorManual: true,
+                });
+                seededGm++;
+              });
+            }
+            gmStore._gmSeeded = true;
+            migrated = true;
+            if (seededGm > 0) movedInfo += " 【グローバルミルボンの品目を" + seededGm + "件登録】";
           }
         }
         // TOKIOの初期品目を登録（空のカテゴリにだけ・一度だけ）
