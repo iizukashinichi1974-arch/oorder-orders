@@ -3599,14 +3599,9 @@ export default function InventoryTracker() {
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
                           </label>
-                          <div className="text-[#232323] text-sm font-medium break-words">
+                          <div className="flex-1 min-w-0 text-[#232323] text-sm font-medium break-words">
                             {(item.name.match(/^(.*?)[\s　]*((?:業務用)?\d+m[lL])$/) || [])[1] || item.name}
                           </div>
-                          {(item.name.match(/((?:業務用)?\d+m[lL])$/) || [])[1] && (
-                            <span className="shrink-0 text-[11px] font-mono px-1.5 py-0.5 rounded bg-[#F0EEE7] text-[#5A5A5A]">
-                              {(item.name.match(/((?:業務用)?\d+m[lL])$/) || [])[1]}
-                            </span>
-                          )}
                         </div>
                         {editingItemId === item.id ? (
                           <div className="mt-1 space-y-1.5 bg-[#FAF9F6] rounded-lg border border-[#E4E0D6] p-2">
@@ -3665,16 +3660,23 @@ export default function InventoryTracker() {
                             </div>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => startEditItem(item)}
-                            className="text-[11px] text-[#9A9A9A] font-mono mt-0.5 inline-flex items-center gap-1"
-                          >
-                            基準 {item.par}
-                            {item.unit}
-                            <span className="text-[#C9C2B2]">
-                              ・¥{item.price ? item.price.toLocaleString() : "未設定"}
-                            </span>
-                          </button>
+                          <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            {(item.name.match(/((?:業務用)?\d+m[lL])$/) || [])[1] && (
+                              <span className="shrink-0 text-[11px] font-mono px-1.5 py-0.5 rounded bg-[#F0EEE7] text-[#5A5A5A]">
+                                {(item.name.match(/((?:業務用)?\d+m[lL])$/) || [])[1]}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => startEditItem(item)}
+                              className="text-[11px] text-[#9A9A9A] font-mono inline-flex items-center gap-1"
+                            >
+                              基準 {item.par}
+                              {item.unit}
+                              <span className="text-[#C9C2B2]">
+                                ・¥{item.price ? item.price.toLocaleString() : "未設定"}
+                              </span>
+                            </button>
+                          </div>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
